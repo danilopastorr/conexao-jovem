@@ -1,15 +1,167 @@
 'use client';
-import {useState} from 'react';
-const qs=[
- ['O CONVITE','Se pudesse levar UMA coisa para colocar sobre a mesa no retiro, o que levaria?','text','Pode ser qualquer coisa...'],
- ['QUEM É VOCÊ?','Qual dessas frases mais combina com você hoje?','options',['Eu estou precisando de um recomeço.','Eu só quero viver algo diferente com Deus.','Ainda não sei exatamente o que esperar.','Eu estou pronto para o que vier.']],
- ['TESTE DE SOBREVIVÊNCIA','São 02:17 da manhã. Alguém grita: “GALERA, TODO MUNDO PRA FORA!” Qual é sua reação?','options',['Levanto na hora.','Pergunto “é sério?” umas 15 vezes.','Finjo que não ouvi.','Continuo dormindo.']],
- ['UMA PALAVRA','Em UMA palavra, diga o que você espera encontrar nesse retiro.','text','Uma palavra...'],
- ['A ESCOLHA','O que você mais espera viver nesse retiro?','options',['Me aproximar mais de Deus','Viver algo novo','Fortalecer amizades','Sair da rotina']],
- ['A PERGUNTA','Se você pudesse conversar com Deus sobre UMA coisa nesses dias, sobre o que seria?','text','Escreva aqui. Ninguém precisa ver.'],
- ['A MESA','Qual palavra você quer levar com você para esses dias?','text','Uma palavra']
+
+import { useEffect, useState } from 'react';
+
+type Question =
+	| { title: string; prompt: string; type: 'text'; placeholder: string }
+	| { title: string; prompt: string; type: 'options'; options: string[] };
+
+type Submission = { name: string; answers: string[] };
+
+const questions: Question[] = [
+	{ title: 'O CONVITE', prompt: 'Se pudesse levar UMA coisa para colocar sobre a mesa no retiro, o que levaria?', type: 'text', placeholder: 'Pode ser qualquer coisa...' },
+	{ title: 'QUEM É VOCÊ?', prompt: 'Qual dessas frases mais combina com você hoje?', type: 'options', options: ['Eu estou precisando de um recomeço.', 'Eu só quero viver algo diferente com Deus.', 'Ainda não sei exatamente o que esperar.', 'Eu estou pronto para o que vier.'] },
+	{ title: 'TESTE DE SOBREVIVÊNCIA', prompt: 'São 02:17 da manhã. Alguém grita: “GALERA, TODO MUNDO PRA FORA!” Qual é sua reação?', type: 'options', options: ['Levanto na hora.', 'Pergunto “é sério?” umas 15 vezes.', 'Finjo que não ouvi.', 'Continuo dormindo.'] },
+	{ title: 'UMA PALAVRA', prompt: 'Em UMA palavra, diga o que você espera encontrar nesse retiro.', type: 'text', placeholder: 'Uma palavra...' },
+	{ title: 'A ESCOLHA', prompt: 'O que você mais espera viver nesse retiro?', type: 'options', options: ['Me aproximar mais de Deus', 'Viver algo novo', 'Fortalecer amizades', 'Sair da rotina'] },
+	{ title: 'A PERGUNTA', prompt: 'Se você pudesse conversar com Deus sobre UMA coisa nesses dias, sobre o que seria?', type: 'text', placeholder: 'Escreva aqui. Ninguém precisa ver.' },
+	{ title: 'A MESA', prompt: 'Qual palavra você quer levar com você para esses dias?', type: 'text', placeholder: 'Uma palavra' },
 ];
-export default function Home(){const[name,setName]=useState('');const[phase,setPhase]=useState(-1);const[answer,setAnswer]=useState('');const[answers,setAnswers]=useState<string[]>([]);const[selected,setSelected]=useState('');const[sending,setSending]=useState(false);const[done,setDone]=useState(false);const[started,setStarted]=useState(false);
- async function next(){if(phase===-1){if(!name.trim())return;setStarted(true);setPhase(0);return}const a=(selected||answer).trim();if(!a)return;const nextAnswers=[...answers];nextAnswers[phase]=a;setAnswers(nextAnswers);setSelected('');setAnswer('');if(phase<qs.length-1){setPhase(phase+1);return}setSending(true);const r=await fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim(),answers:nextAnswers})});setSending(false);if(r.ok)setDone(true);else alert('Não foi possível salvar agora. Tente novamente.')} 
- if(done)return <main className="app"><div className="hero"><div className="kicker">Você chegou até aqui.</div><h2>A mesa está <em>pronta.</em></h2><p>{name}, suas respostas foram registradas. Agora é hora de sair da tela e viver o que vem pela frente.</p><div className="card"><div className="kicker">ÚLTIMA MISSÃO</div><strong>Antes de dormir, faça uma oração.</strong><p>Pergunte a Deus: “O que o Senhor quer fazer em mim nesses dias?”</p></div></div></main>;
- return <main className="app"><div className="top"><div className="brand">CONEXÃO <span>JOVEM</span></div><div className="badge">NA MESA</div></div>{phase===-1?<div className="hero"><div className="kicker">Uma experiência em 7 fases</div><h1>O caminho<br/>até a <em>MESA.</em></h1><p>Complete tudo de uma vez. Suas respostas ficam registradas para a organização do retiro.</p><input className="input" value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Digite seu nome"/><button className="btn" onClick={next}>COMEÇAR</button></div>:<><div className="meta"><span>FASE {phase+1} DE 7</span><span>{name}</span></div><div className="progress"><i style={{width:`${phase/7*100}%`}}/></div><div className="kicker">FASE {String(phase+1).padStart(2,'0')} — {qs[phase][0]}</div><h2>{qs[phase][0]}</h2><p>{qs[phase][1]}</p><div className="card">{qs[phase][2]==='text'?<><input className="input" value={answer} onChange={e=>setAnswer(e.target.value)} maxLength={200} placeholder={String(qs[phase][3])}/></>:<div className="options">{(qs[phase][3] as string[]).map(o=><button key={o} className={'option '+(selected===o?'selected':'')} onClick={()=>setSelected(o)}>{o}</button>)}</div>}<button className="btn" style={{marginTop:14}} onClick={next} disabled={sending}>{sending?'SALVANDO...':phase===6?'FINALIZAR':'PRÓXIMA FASE'}</button></div></>}</main>}
+
+const deviceStorageKey = 'conexao-jovem-device-id';
+
+function getDeviceId() {
+	const existingId = window.localStorage.getItem(deviceStorageKey);
+	if (existingId) return existingId;
+
+	const newId = window.crypto.randomUUID();
+	window.localStorage.setItem(deviceStorageKey, newId);
+	return newId;
+}
+
+export default function Home() {
+	const [name, setName] = useState('');
+	const [phase, setPhase] = useState(-1);
+	const [answer, setAnswer] = useState('');
+	const [answers, setAnswers] = useState<string[]>([]);
+	const [selected, setSelected] = useState('');
+	const [sending, setSending] = useState(false);
+	const [done, setDone] = useState(false);
+	const [deviceId, setDeviceId] = useState('');
+	const [checkingDevice, setCheckingDevice] = useState(true);
+	const [checkFailed, setCheckFailed] = useState(false);
+	const [previousSubmission, setPreviousSubmission] = useState<Submission | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function checkPreviousSubmission() {
+			try {
+				const id = getDeviceId();
+				const response = await fetch(`/api/submit?deviceId=${encodeURIComponent(id)}`);
+				if (!response.ok) throw new Error('Não foi possível verificar a participação');
+
+				const result = await response.json();
+				if (cancelled) return;
+
+				setDeviceId(id);
+				if (result.alreadySubmitted) {
+					setPreviousSubmission({ name: result.name, answers: result.answers });
+				}
+			} catch {
+				if (!cancelled) setCheckFailed(true);
+			} finally {
+				if (!cancelled) setCheckingDevice(false);
+			}
+		}
+
+		void checkPreviousSubmission();
+		return () => { cancelled = true; };
+	}, []);
+
+	async function next() {
+		if (phase === -1) {
+			if (!name.trim()) return;
+			setPhase(0);
+			return;
+		}
+
+		const currentAnswer = (selected || answer).trim();
+		if (!currentAnswer) return;
+
+		const nextAnswers = [...answers];
+		nextAnswers[phase] = currentAnswer;
+		setAnswers(nextAnswers);
+		setSelected('');
+		setAnswer('');
+
+		if (phase < questions.length - 1) {
+			setPhase(phase + 1);
+			return;
+		}
+
+		setSending(true);
+		try {
+			const response = await fetch('/api/submit', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: name.trim(), answers: nextAnswers, deviceId }),
+			});
+			const result = await response.json();
+
+			if (result.alreadySubmitted) {
+				setPreviousSubmission({ name: result.name, answers: result.answers });
+				return;
+			}
+			if (!response.ok) throw new Error(result.error || 'Falha ao salvar');
+			setDone(true);
+		} catch {
+			alert('Não foi possível salvar agora. Tente novamente.');
+		} finally {
+			setSending(false);
+		}
+	}
+
+	if (checkingDevice) {
+		return <main className="app"><div className="hero"><div className="kicker">Conexão Jovem</div><p>Verificando sua participação...</p></div></main>;
+	}
+
+	if (checkFailed) {
+		return <main className="app"><div className="hero"><div className="kicker">Não foi possível verificar</div><h2>Tente novamente.</h2><p>Não conseguimos confirmar se este dispositivo já participou. Recarregue a página para tentar de novo.</p><button className="btn" onClick={() => window.location.reload()}>RECARREGAR</button></div></main>;
+	}
+
+	if (previousSubmission) {
+		return <main className="app">
+			<div className="top"><div className="brand">CONEXÃO <span>JOVEM</span></div><div className="badge">NA MESA</div></div>
+			<div className="hero" style={{ minHeight: 'auto' }}>
+				<div className="kicker">Participação registrada</div>
+				<h2>Você já respondeu <em>neste dispositivo.</em></h2>
+				<p>{previousSubmission.name}, estas foram as respostas enviadas:</p>
+				<div className="card">
+					{questions.map((question, index) => <div className="question" key={question.title}>
+						<strong>{question.title}</strong>
+						<p>{question.prompt}</p>
+						<p>{previousSubmission.answers[index] || 'Sem resposta'}</p>
+					</div>)}
+				</div>
+			</div>
+		</main>;
+	}
+
+	if (done) {
+		return <main className="app"><div className="hero"><div className="kicker">Você chegou até aqui.</div><h2>A mesa está <em>pronta.</em></h2><p>{name}, suas respostas foram registradas. Agora é hora de sair da tela e viver o que vem pela frente.</p><div className="card"><div className="kicker">ÚLTIMA MISSÃO</div><strong>Antes de dormir, faça uma oração.</strong><p>Pergunte a Deus: “O que o Senhor quer fazer em mim nesses dias?”</p></div></div></main>;
+	}
+
+	return <main className="app">
+		<div className="top"><div className="brand">CONEXÃO <span>JOVEM</span></div><div className="badge">NA MESA</div></div>
+		{phase === -1 ? <div className="hero">
+			<div className="kicker">Uma experiência em 7 fases</div>
+			<h1>O caminho<br />até a <em>MESA.</em></h1>
+			<p>Complete tudo de uma vez. Suas respostas ficam registradas para a organização do retiro.</p>
+			<input className="input" value={name} onChange={event => setName(event.target.value)} maxLength={40} placeholder="Digite seu nome" />
+			<button className="btn" onClick={next}>COMEÇAR</button>
+		</div> : <>
+			<div className="meta"><span>FASE {phase + 1} DE 7</span><span>{name}</span></div>
+			<div className="progress"><i style={{ width: `${phase / questions.length * 100}%` }} /></div>
+			<div className="kicker">FASE {String(phase + 1).padStart(2, '0')} — {questions[phase].title}</div>
+			<h2>{questions[phase].title}</h2>
+			<p>{questions[phase].prompt}</p>
+			<div className="card">
+				{questions[phase].type === 'text' ? <input className="input" value={answer} onChange={event => setAnswer(event.target.value)} maxLength={200} placeholder={questions[phase].placeholder} /> : <div className="options">
+					{questions[phase].options.map(option => <button key={option} className={`option ${selected === option ? 'selected' : ''}`} onClick={() => setSelected(option)}>{option}</button>)}
+				</div>}
+				<button className="btn" style={{ marginTop: 14 }} onClick={next} disabled={sending}>{sending ? 'SALVANDO...' : phase === questions.length - 1 ? 'FINALIZAR' : 'PRÓXIMA FASE'}</button>
+			</div>
+		</>}
+	</main>;
+}
