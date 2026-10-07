@@ -1,0 +1,94 @@
+.admin-print-report {
+	display: none;
+}
+
+@media print {
+	@page {
+		size: A4;
+		margin: 16mm;
+	}
+
+	body {
+		background: #fff !important;
+		color: #111 !important;
+		font-family: Arial, sans-serif !important;
+	}
+
+	.admin-screen {
+		display: none !important;
+	}
+
+	.admin-print-report {
+		display: block !important;
+		color: #111 !important;
+		font-size: 10pt;
+	}
+
+	.print-header {
+		border-bottom: 2px solid #111;
+		margin-bottom: 20px;
+		padding-bottom: 12px;
+	}
+
+	.print-header p,
+	.print-participant-heading p,
+	.print-prompt {
+		color: #555 !important;
+	}
+
+	.print-header > p {
+		font-size: 9pt;
+		font-weight: 700;
+		letter-spacing: 1px;
+	}
+
+	.print-header h1 {
+		font-size: 22pt !important;
+		line-height: 1.2;
+		margin: 0 0 8px;
+	}
+
+	.print-participant {
+		break-before: page;
+		page-break-before: always;
+	}
+
+	.print-participant:first-of-type {
+		break-before: auto;
+		page-break-before: auto;
+	}
+
+	.print-participant-heading {
+		border-bottom: 1px solid #bbb;
+		margin-bottom: 12px;
+		padding-bottom: 8px;
+	}
+
+	.print-participant-heading h2 {
+		font-size: 16pt !important;
+		line-height: 1.2;
+		margin: 0 0 4px;
+	}
+
+	.print-participant-heading p,
+	.print-answer p {
+		font-size: 9pt;
+		line-height: 1.4;
+		margin: 4px 0;
+	}
+
+	.print-answer {
+		break-inside: avoid;
+		page-break-inside: avoid;
+		margin: 0 0 12px;
+	}
+
+	.print-answer h3 {
+		font-size: 10pt;
+		margin: 0 0 4px;
+	}
+
+	.print-answer .print-prompt {
+		font-style: italic;
+	}
+}
